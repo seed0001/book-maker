@@ -3,20 +3,20 @@ import { auth } from "@/lib/auth";
 
 const FEATURES = [
   {
-    title: "Guided AI interviews",
-    body: "A thoughtful AI biographer interviews you about every era of your life — childhood, family, career, love, lessons — one question at a time.",
+    title: "Any book you can imagine",
+    body: "Novels, memoirs, non-fiction, children's books, poetry — each with an AI co-writer that adapts to the craft of that form.",
   },
   {
-    title: "From memories to chapters",
-    body: "Your interview answers become beautifully written first-person chapters, drafted by AI in your own voice and fully editable by you.",
+    title: "A studio for your ideas",
+    body: "Brainstorm storylines, characters, and structure in threaded AI sessions. For memoirs, the AI becomes your biographer and interviews you about your life.",
+  },
+  {
+    title: "AI in every step",
+    body: "Generate a chapter outline from your premise, draft chapters from your notes, proofread your prose, and run a whole-book coherence review from a developmental editor's eye.",
   },
   {
     title: "A real book designer",
-    body: "Choose fonts, page sizes, and layouts. Preview your autobiography page by page, exactly as it would print.",
-  },
-  {
-    title: "Your photos, your cover",
-    body: "Upload personal photos and cover art to make the book unmistakably yours.",
+    body: "Fonts, page sizes, cover art, page-by-page preview — and coming soon, full-cast audiobook narration with a different AI voice for every character.",
   },
 ];
 
@@ -55,12 +55,14 @@ export default async function Home() {
       <main className="mx-auto max-w-5xl px-6">
         <section className="py-24 text-center">
           <h1 className="mx-auto max-w-3xl font-serif text-5xl leading-tight tracking-tight sm:text-6xl">
-            Your life. <span className="text-amber-400">Beautifully told.</span>
+            Every book you&apos;ve ever wanted to write.{" "}
+            <span className="text-amber-400">Written.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-zinc-400">
-            BookMaker turns your memories into a finished autobiography. Sit for
-            an AI-guided interview about your whole life, then watch it become a
-            real book — designed, typeset, and yours to keep.
+            BookMaker pairs you with an AI co-writer for the whole journey —
+            brainstorming storylines, drafting chapters, keeping the story
+            coherent, proofreading every line — then designs it into a real
+            book, cover to cover.
           </p>
           <div className="mt-10 flex justify-center gap-4">
             <Link
@@ -88,7 +90,7 @@ export default async function Home() {
       </main>
 
       <footer className="border-t border-zinc-900 py-8 text-center text-sm text-zinc-500">
-        BookMaker — every life deserves a book.
+        BookMaker — everyone has a book in them.
       </footer>
     </div>
   );

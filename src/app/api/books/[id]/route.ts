@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 const UpdateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   subtitle: z.string().max(300).nullable().optional(),
+  premise: z.string().max(10_000).optional(),
   coverImageUrl: z.string().max(500).nullable().optional(),
   settings: z.record(z.string(), z.unknown()).optional(),
 });
@@ -31,12 +32,13 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
-  const { title, subtitle, coverImageUrl, settings } = parsed.data;
+  const { title, subtitle, premise, coverImageUrl, settings } = parsed.data;
   const updated = await prisma.book.update({
     where: { id },
     data: {
       ...(title !== undefined && { title }),
       ...(subtitle !== undefined && { subtitle }),
+      ...(premise !== undefined && { premise }),
       ...(coverImageUrl !== undefined && { coverImageUrl }),
       ...(settings !== undefined && { settings: settings as object }),
     },

@@ -30,6 +30,8 @@ export default async function BookPage({
         id: book.id,
         title: book.title,
         subtitle: book.subtitle,
+        kind: book.kind,
+        premise: book.premise,
         coverImageUrl: book.coverImageUrl,
         settings: (book.settings ?? {}) as Record<string, unknown>,
         chapters: book.chapters.map((c) => ({

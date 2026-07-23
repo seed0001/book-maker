@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import NewBookButton from "@/components/NewBookButton";
+import { kindLabel } from "@/lib/bookKinds";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -45,8 +46,8 @@ export default async function DashboardPage() {
           <div className="mt-16 rounded-xl border border-dashed border-zinc-800 p-16 text-center">
             <p className="text-lg text-zinc-300">No books yet.</p>
             <p className="mt-2 text-sm text-zinc-500">
-              Start your autobiography — the AI interviewer is ready when you
-              are.
+              Start your first book — novel, memoir, non-fiction, anything.
+              Your AI co-writer is ready when you are.
             </p>
           </div>
         ) : (
@@ -65,9 +66,14 @@ export default async function DashboardPage() {
                     {book.subtitle}
                   </div>
                 )}
-                <div className="mt-4 text-xs text-zinc-500">
+                <div className="mt-3">
+                  <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-400">
+                    {kindLabel(book.kind)}
+                  </span>
+                </div>
+                <div className="mt-3 text-xs text-zinc-500">
                   {book._count.chapters} chapters · {book._count.sessions}{" "}
-                  interview sessions
+                  studio threads
                 </div>
                 <div className="mt-1 text-xs text-zinc-600">
                   Updated {book.updatedAt.toLocaleDateString()}

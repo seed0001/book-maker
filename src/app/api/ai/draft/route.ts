@@ -3,11 +3,15 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { complete } from "@/lib/openrouter";
+import { bookContextBlock, draftSystemPrompt } from "@/lib/bookAI";
 
 const BodySchema = z.object({
   bookId: z.string(),
   chapterId: z.string(),
 });
+
+const MAX_TRANSCRIPT = 60_000;
+const MAX_CHAPTER_EXCERPT = 2_000;
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -26,9 +30,7 @@ export async function POST(req: Request) {
     where: { id: bookId },
     include: {
       chapters: { orderBy: { order: "asc" } },
-      sessions: {
-        include: { messages: { orderBy: { createdAt: "asc" } } },
-      },
+      sessions: { include: { messages: { orderBy: { createdAt: "asc" } } } },
     },
   });
   if (!book || book.userId !== session.user.id) {
@@ -40,49 +42,66 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
   }
 
-  // Prefer the interview session matching this chapter's title; fall back to all
+  // Development notes: prefer the thread matching this chapter's title, else all threads
   const matching = book.sessions.filter(
     (s) => s.topic.toLowerCase() === chapter.title.toLowerCase()
   );
   const sources = matching.length > 0 ? matching : book.sessions;
   const transcript = sources
-    .flatMap((s) =>
-      s.messages.map(
-        (m) => `${m.role === "user" ? "SUBJECT" : "INTERVIEWER"}: ${m.content}`
-      )
+    .map(
+      (s) =>
+        `--- Thread: ${s.topic} ---\n` +
+        s.messages
+          .map((m) => `${m.role === "user" ? "AUTHOR" : "AI"}: ${m.content}`)
+          .join("\n")
     )
-    .join("\n");
+    .join("\n\n")
+    .slice(-MAX_TRANSCRIPT);
 
-  if (!transcript.trim()) {
+  if (!transcript.trim() && !book.premise.trim()) {
     return NextResponse.json(
-      { error: "No interview material yet. Do some interviewing first!" },
+      {
+        error:
+          "No source material yet. Add a premise in Design, or develop ideas in the Studio first.",
+      },
       { status: 400 }
     );
   }
 
+  // Excerpts of already-written chapters, for continuity
+  const written = book.chapters
+    .filter((c) => c.id !== chapterId && c.content.trim())
+    .map(
+      (c) =>
+        `--- ${c.title} (excerpt) ---\n${c.content.slice(0, MAX_CHAPTER_EXCERPT)}`
+    )
+    .join("\n\n");
+
+  const context = bookContextBlock({
+    title: book.title,
+    kind: book.kind,
+    premise: book.premise,
+    chapterTitles: book.chapters.map((c) => c.title),
+  });
+
   const content = await complete(
     [
-      {
-        role: "system",
-        content:
-          "You are a gifted memoir ghostwriter. Using ONLY the interview transcript provided, " +
-          "write a chapter of an autobiography in the first person, in the subject's voice. " +
-          "Preserve their facts, names, and phrasings; never invent events. Write flowing, " +
-          "vivid, warm prose in plain paragraphs (no markdown headers). Aim for 500-1200 words " +
-          "depending on how much material is available.",
-      },
+      { role: "system", content: draftSystemPrompt(book.kind) },
       {
         role: "user",
-        content: `Chapter title: "${chapter.title}"\nBook title: "${book.title}"\n\nInterview transcript:\n${transcript}`,
+        content:
+          `${context}\n\nChapter to draft: "${chapter.title}"` +
+          (chapter.content.trim()
+            ? `\n\nExisting draft of this chapter (improve/rewrite it):\n${chapter.content.slice(0, 8000)}`
+            : "") +
+          (written ? `\n\nOther written chapters:\n${written}` : "") +
+          (transcript ? `\n\nDevelopment notes and transcripts:\n${transcript}` : ""),
       },
     ],
-    { maxTokens: 4000 }
+    { maxTokens: 6000 }
   );
 
-  await prisma.chapter.update({
-    where: { id: chapterId },
-    data: { content },
-  });
+  await prisma.chapter.update({ where: { id: chapterId }, data: { content } });
 
   return NextResponse.json({ content });
 }

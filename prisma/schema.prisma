@@ -22,8 +22,10 @@ model Book {
   id            String             @id @default(cuid())
   userId        String
   user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title         String             @default("My Autobiography")
+  title         String             @default("Untitled Book")
   subtitle      String?
+  kind          String             @default("novel")
+  premise       String             @default("")
   status        BookStatus         @default(DRAFT)
   coverImageUrl String?
   // Design settings: fontFamily, fontSize, lineHeight, pageSize, margins, theme

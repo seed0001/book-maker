@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BookMaker — Your life, beautifully told",
+  title: "BookMaker — Write any book with an AI co-writer",
   description:
-    "Author your autobiography with an AI-guided interview, then design it into a real book.",
+    "Brainstorm, outline, draft, proofread, and design any book — novel, memoir, non-fiction, and more — with AI assisting every step.",
 };
 
 export default function RootLayout({

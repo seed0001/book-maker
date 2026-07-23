@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { streamChat, type ChatMessage } from "@/lib/openrouter";
+import { chatSystemPrompt } from "@/lib/bookAI";
 
 const BodySchema = z.object({
   bookId: z.string(),
@@ -18,18 +19,6 @@ const BodySchema = z.object({
     .max(200),
 });
 
-function systemPrompt(topic: string) {
-  return [
-    "You are a warm, skilled biographer conducting a life-story interview for an autobiography.",
-    `The current interview topic is: "${topic}".`,
-    "Ask exactly one thoughtful question at a time. Follow up on interesting details —",
-    "names, places, sensory memories, emotions, turning points. Draw out specifics that",
-    "will make vivid memoir material. Be encouraging and personal, never clinical.",
-    "Keep your responses short (a sentence or two of warm reaction, then the next question).",
-    "If the subject seems finished with an area, gently move to an unexplored corner of the topic.",
-  ].join(" ");
-}
-
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -43,12 +32,15 @@ export async function POST(req: Request) {
   }
 
   const { bookId, topic, messages } = parsed.data;
-  const book = await prisma.book.findUnique({ where: { id: bookId } });
+  const book = await prisma.book.findUnique({
+    where: { id: bookId },
+    include: { chapters: { orderBy: { order: "asc" }, select: { title: true } } },
+  });
   if (!book || book.userId !== session.user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const interviewSession = await prisma.interviewSession.upsert({
+  const thread = await prisma.interviewSession.upsert({
     where: { bookId_topic: { bookId, topic } },
     update: {},
     create: { bookId, topic },
@@ -58,16 +50,23 @@ export async function POST(req: Request) {
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   if (lastUser) {
     await prisma.interviewMessage.create({
-      data: {
-        sessionId: interviewSession.id,
-        role: "user",
-        content: lastUser.content,
-      },
+      data: { sessionId: thread.id, role: "user", content: lastUser.content },
     });
   }
 
   const chatMessages: ChatMessage[] = [
-    { role: "system", content: systemPrompt(topic) },
+    {
+      role: "system",
+      content: chatSystemPrompt(
+        {
+          title: book.title,
+          kind: book.kind,
+          premise: book.premise,
+          chapterTitles: book.chapters.map((c) => c.title),
+        },
+        topic
+      ),
+    },
     ...messages,
   ];
 
@@ -76,11 +75,7 @@ export async function POST(req: Request) {
       onFinish: async (text) => {
         if (text.trim()) {
           await prisma.interviewMessage.create({
-            data: {
-              sessionId: interviewSession.id,
-              role: "assistant",
-              content: text,
-            },
+            data: { sessionId: thread.id, role: "assistant", content: text },
           });
         }
       },
@@ -93,9 +88,9 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
-    console.error("Interview AI error:", err);
+    console.error("Studio chat error:", err);
     return NextResponse.json(
-      { error: "The AI interviewer is unavailable right now. Check OPENROUTER_API_KEY." },
+      { error: "The AI is unavailable right now. Check OPENROUTER_API_KEY." },
       { status: 502 }
     );
   }
