@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  books        Book[]
+  assets       Asset[]
+}
+
+model Book {
+  id            String             @id @default(cuid())
+  userId        String
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String             @default("My Autobiography")
+  subtitle      String?
+  status        BookStatus         @default(DRAFT)
+  coverImageUrl String?
+  // Design settings: fontFamily, fontSize, lineHeight, pageSize, margins, theme
+  settings      Json               @default("{}")
+  chapters      Chapter[]
+  sessions      InterviewSession[]
+  assets        Asset[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+enum BookStatus {
+  DRAFT
+  IN_REVIEW
+  COMPLETE
+}
+
+model Chapter {
+  id        String   @id @default(cuid())
+  bookId    String
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  title     String
+  order     Int
+  content   String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bookId, order])
+}
+
+model InterviewSession {
+  id        String             @id @default(cuid())
+  bookId    String
+  book      Book               @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  topic     String
+  messages  InterviewMessage[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@unique([bookId, topic])
+}
+
+model InterviewMessage {
+  id        String           @id @default(cuid())
+  sessionId String
+  session   InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String
+  content   String
+  createdAt DateTime         @default(now())
+
+  @@index([sessionId, createdAt])
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId    String?
+  book      Book?    @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  filename  String
+  mimeType  String
+  size      Int
+  path      String
+  caption   String?
+  createdAt DateTime @default(now())
+}
